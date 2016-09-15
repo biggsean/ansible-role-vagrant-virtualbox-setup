@@ -1,0 +1,47 @@
+---
+# tasks file for vagrant-virtualbox-setup
+
+- name: ensure that the libselinux-python package is installed
+  yum:
+    name: libselinux-python
+    state: present
+  tags:
+    - vagrant-virtualbox-setup
+
+- name: ensure that guest additions setup service exists
+  copy:
+    dest: /etc/init.d/vagrant-virtualbox-setup
+    src: vagrant-virtualbox-setup.sh
+    owner: root
+    group: root
+    mode: 0755
+  tags:
+    - vagrant-virtualbox-setup
+
+- name: enable vbox setup service
+  service: 
+    name: vagrant-virtualbox-setup
+    enabled: yes
+  tags:
+    - vagrant-virtualbox-setup
+
+- name: get vboxsf mounts
+  command: grep vboxsf /etc/mtab
+  register: __vagrant_virtualbox_setup_grep_mtab
+  changed_when: false
+  ignore_errors: true
+  tags:
+    - vagrant-virtualbox-setup
+
+- name: ensure vboxsf mounts are persistent
+  mount:
+    name: "{{ item.split()[1] }}"
+    src: "{{ item.split()[0] }}"
+    fstype: "{{ item.split()[2] }}"
+    opts: "{{ item.split()[3] }}"
+    state: present
+  with_items: "{{ __vagrant_virtualbox_setup_grep_mtab.stdout_lines }}"
+  when: __vagrant_virtualbox_setup_grep_mtab|succeeded
+  tags:
+    - vagrant-virtualbox-setup
+
